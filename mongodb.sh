@@ -1,15 +1,19 @@
-USERID=$(id -u)
+#!/bin/bash
+
+USERID=$(id -u)  # Gets the user ID
 TIMESTAMP=$(date +%F-%H-%M-%S)
 SCRIPT_NAME=$(echo $0 | cut -d "." -f1)
 LOGFILE=/tmp/$SCRIPT_NAME-$TIMESTAMP.log
+
+# Colors for output
 R="\e[31m"
 G="\e[32m"
 Y="\e[33m"
 N="\e[0m"
 
+# Function to validate commands
 VALIDATE(){
-   if [ $1 -ne 0 ]
-   then
+   if [ $1 -ne 0 ]; then
         echo -e "$2...$R FAILURE $N"
         exit 1
     else
@@ -17,28 +21,35 @@ VALIDATE(){
     fi
 }
 
-if ($USERID nq 0)
-then 
+# Check for root user
+if [ $USERID -ne 0 ]; then 
   echo "Please run this script with root access."
   exit 1
 else
-  echo "you are the root user"
+  echo "You are the root user."
 fi
 
-cp mongo.repo cp mongo.repo /etc/apt/sources.list.d/mongo.list &>> $LOGFILE
-VALIDATE $? "copied mango repo"
+# Copy MongoDB repo
+cp mongo.repo /etc/apt/sources.list.d/mongo.list &>> $LOGFILE
+VALIDATE $? "Copied MongoDB repo"
 
-apt install mongodb.org -y &>>LOGFILE
-VALIDATE $? "copied mangodb install"
+# Install MongoDB
+apt update &>> $LOGFILE  # Ensure package lists are updated
+apt install -y mongodb-org &>> $LOGFILE
+VALIDATE $? "MongoDB installation"
 
-systemctl enable mongod &>>LOGFILE
-VALIDATE $? "systemctl enabled"
+# Enable MongoDB service
+systemctl enable mongod &>> $LOGFILE
+VALIDATE $? "Enabled MongoDB service"
 
-systemctl start mongod &>>LOGFILE
-VALIDATE $? "started mongod"
+# Start MongoDB service
+systemctl start mongod &>> $LOGFILE
+VALIDATE $? "Started MongoDB service"
 
-sed -i "s/127.0.0.0/0.0.0.0/g /etc/mongod.conf &>> $LOGFILE
-VALIDATE $? "Remote server access"
+# Allow remote server access by modifying bindIp
+sed -i "s/127.0.0.1/0.0.0.0/g" /etc/mongod.conf &>> $LOGFILE
+VALIDATE $? "Configured remote server access"
 
-systemctl restart mongod &>>LOGFILE 
-VALIDATE $? "restarted mongod"
+# Restart MongoDB service
+systemctl restart mongod &>> $LOGFILE
+VALIDATE $? "Restarted MongoDB service"
